@@ -1,0 +1,15 @@
+[package]
+name = "rbush-rs"
+version = "0.1.0"
+authors = ["Preetham <ppmpreetham1@gmail.com>"]
+description = "High-performance RBush port in WebAssembly"
+repository = "https://github.com/ppmpreetham/rbush-rs"
+license = "MIT"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+js-sys = "0.3.85"
+wasm-bindgen = "0.2.108"

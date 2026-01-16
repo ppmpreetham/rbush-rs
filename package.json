@@ -1,0 +1,25 @@
+{
+  "name": "rbush-rs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ppmpreetham/rbush-rs.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ppmpreetham/rbush-rs/issues"
+  },
+  "homepage": "https://github.com/ppmpreetham/rbush-rs#readme",
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "rbush": "^3.0.1"
+  }
+}
