@@ -173,7 +173,10 @@ impl RBush {
             for child in &node.children {
                 if bbox.intersects(&child.bbox) {
                     if child.is_leaf {
-                        result.push(&child.data);
+                        
+                        if !child.data.is_null() && !child.data.is_undefined() {
+                            result.push(&child.data);
+                        }
                     } else if bbox.contains(&child.bbox) {
                         self._all(child, &result);
                     } else {
@@ -208,6 +211,9 @@ impl RBush {
 
     #[wasm_bindgen(js_name = insert)]
     pub fn insert(&mut self, item: JsValue) {
+        if item.is_null() || item.is_undefined() {
+            return;
+        }
         let entry = Entry::new_leaf(item);
         self.insert_entry(entry);
     }
@@ -218,12 +224,21 @@ impl RBush {
         }
 
         let items: Vec<Entry> = (0..data.length())
-            .map(|i| Entry::new_leaf(data.get(i)))
+            .filter_map(|i| {
+                let val = data.get(i);
+                if val.is_null() || val.is_undefined() {
+                    return None;
+                }
+                Some(Entry::new_leaf(val))
+            })
             .collect();
 
-        self.bulk_load(items);
+        if !items.is_empty() {
+            self.bulk_load(items);
+        }
     }
 
+    
     #[wasm_bindgen(js_name = loadHybrid)]
     pub fn load_hybrid(&mut self, fast_coords: &[f64], items: &Array) {
         if fast_coords.is_empty() {
@@ -234,9 +249,14 @@ impl RBush {
         let mut entries = Vec::with_capacity(count);
 
         for i in 0..count {
+            let item_data = items.get(i as u32);
+            
+            if item_data.is_null() || item_data.is_undefined() {
+                continue;
+            }
+
             let start = i * 4;
             let bbox = Rect::from_flat(&fast_coords[start..start + 4]);
-            let item_data = items.get(i as u32);
 
             entries.push(Entry {
                 bbox,
@@ -247,7 +267,9 @@ impl RBush {
             });
         }
 
-        self.bulk_load(entries);
+        if !entries.is_empty() {
+            self.bulk_load(entries);
+        }
     }
 
     pub fn remove(&mut self, item: JsValue) {
@@ -398,7 +420,9 @@ impl RBush {
         while let Some(n) = stack.pop() {
             for child in &n.children {
                 if child.is_leaf {
-                    result.push(&child.data);
+                    if !child.data.is_null() && !child.data.is_undefined() {
+                        result.push(&child.data);
+                    }
                 } else {
                     stack.push(child);
                 }
