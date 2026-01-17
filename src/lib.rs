@@ -1,4 +1,4 @@
-use js_sys::{Array, Reflect};
+use js_sys::{Array, Object, Reflect};
 use wasm_bindgen::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -20,17 +20,23 @@ impl Rect {
     }
 
     fn from_js(item: &JsValue) -> Self {
-        fn get_coord(val: &JsValue, prop: &str) -> f64 {
-            match Reflect::get(val, &JsValue::from_str(prop)) {
-                Ok(v) => v.as_f64().unwrap_or(0.0),
-                Err(_) => 0.0,
-            }
+        if item.is_null() || item.is_undefined() {
+            return Rect::new_empty();
         }
+
+        
+        let get_coord = |prop: &str| {
+            Reflect::get(item, &prop.into())
+                .ok() 
+                .and_then(|v| v.as_f64()) 
+                .unwrap_or(0.0) 
+        };
+
         Rect {
-            min_x: get_coord(item, "minX"),
-            min_y: get_coord(item, "minY"),
-            max_x: get_coord(item, "maxX"),
-            max_y: get_coord(item, "maxY"),
+            min_x: get_coord("minX"),
+            min_y: get_coord("minY"),
+            max_x: get_coord("maxX"),
+            max_y: get_coord("maxY"),
         }
     }
 
@@ -97,6 +103,61 @@ struct Entry {
 }
 
 impl Entry {
+    fn to_js_object(&self) -> JsValue {
+        let obj = Object::new();
+        let _ = Reflect::set(&obj, &"minX".into(), &self.bbox.min_x.into());
+        let _ = Reflect::set(&obj, &"minY".into(), &self.bbox.min_y.into());
+        let _ = Reflect::set(&obj, &"maxX".into(), &self.bbox.max_x.into());
+        let _ = Reflect::set(&obj, &"maxY".into(), &self.bbox.max_y.into());
+        let _ = Reflect::set(&obj, &"leaf".into(), &self.is_leaf.into());
+        let _ = Reflect::set(&obj, &"height".into(), &(self.height as f64).into());
+
+        let js_children = Array::new();
+        for child in &self.children {
+            js_children.push(&if self.is_leaf {
+                child.data.clone()
+            } else {
+                child.to_js_object()
+            });
+        }
+        let _ = Reflect::set(&obj, &"children".into(), &js_children.into());
+        obj.into()
+    }
+
+    fn from_js_object(val: &JsValue) -> Self {
+        let bbox = Rect::from_js(val);
+        let is_leaf = Reflect::get(val, &"leaf".into())
+            .ok()
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+        let height = Reflect::get(val, &"height".into())
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(1.0) as usize;
+        let js_children = Reflect::get(val, &"children".into())
+            .ok()
+            .and_then(|v| v.dyn_into::<Array>().ok())
+            .unwrap_or_else(Array::new);
+
+        let mut children = Vec::with_capacity(js_children.length() as usize);
+        if is_leaf {
+            for i in 0..js_children.length() {
+                children.push(Entry::new_leaf(js_children.get(i)));
+            }
+        } else {
+            for i in 0..js_children.length() {
+                children.push(Entry::from_js_object(&js_children.get(i)));
+            }
+        }
+        Entry {
+            bbox,
+            data: JsValue::NULL,
+            is_leaf,
+            height,
+            children,
+        }
+    }
+
     fn new_leaf(item: JsValue) -> Self {
         let bbox = Rect::from_js(&item);
         Entry {
@@ -142,7 +203,6 @@ impl RBush {
     pub fn new(max_entries: Option<usize>) -> RBush {
         let m = max_entries.unwrap_or(9).max(4);
         let min = (m as f64 * 0.4).ceil().max(2.0) as usize;
-
         RBush {
             root: Entry::new_node(vec![]),
             max_entries: m,
@@ -173,7 +233,6 @@ impl RBush {
             for child in &node.children {
                 if bbox.intersects(&child.bbox) {
                     if child.is_leaf {
-                        
                         if !child.data.is_null() && !child.data.is_undefined() {
                             result.push(&child.data);
                         }
@@ -211,18 +270,13 @@ impl RBush {
 
     #[wasm_bindgen(js_name = insert)]
     pub fn insert(&mut self, item: JsValue) {
-        if item.is_null() || item.is_undefined() {
-            return;
+        if !item.is_null() && !item.is_undefined() {
+            let entry = Entry::new_leaf(item);
+            self.insert_entry(entry);
         }
-        let entry = Entry::new_leaf(item);
-        self.insert_entry(entry);
     }
 
     pub fn load(&mut self, data: &Array) {
-        if data.length() == 0 {
-            return;
-        }
-
         let items: Vec<Entry> = (0..data.length())
             .filter_map(|i| {
                 let val = data.get(i);
@@ -232,13 +286,11 @@ impl RBush {
                 Some(Entry::new_leaf(val))
             })
             .collect();
-
         if !items.is_empty() {
             self.bulk_load(items);
         }
     }
 
-    
     #[wasm_bindgen(js_name = loadHybrid)]
     pub fn load_hybrid(&mut self, fast_coords: &[f64], items: &Array) {
         if fast_coords.is_empty() {
@@ -250,7 +302,7 @@ impl RBush {
 
         for i in 0..count {
             let item_data = items.get(i as u32);
-            
+
             if item_data.is_null() || item_data.is_undefined() {
                 continue;
             }
@@ -273,21 +325,21 @@ impl RBush {
     }
 
     pub fn remove(&mut self, item: JsValue) {
+        if item.is_null() || item.is_undefined() {
+            return;
+        }
         let bbox = Rect::from_js(&item);
-        let mut items_to_reinsert = Vec::new();
-
+        let mut reinsert = Vec::new();
         RBush::remove_from_node(
             &mut self.root,
             &item,
             &bbox,
             self.min_entries,
-            &mut items_to_reinsert,
+            &mut reinsert,
         );
-
-        for item in items_to_reinsert {
-            self.insert_entry(item);
+        for i in reinsert {
+            self.insert_entry(i);
         }
-
         if !self.root.is_leaf && self.root.children.len() == 1 {
             self.root = self.root.children.pop().unwrap();
         }
@@ -651,5 +703,17 @@ impl RBush {
             }
         }
         index
+    }
+
+    #[wasm_bindgen(js_name = toJSON)]
+    pub fn to_json(&self) -> JsValue {
+        self.root.to_js_object()
+    }
+
+    #[wasm_bindgen(js_name = fromJSON)]
+    pub fn from_json(&mut self, data: JsValue) {
+        if !data.is_null() && !data.is_undefined() {
+            self.root = Entry::from_js_object(&data);
+        }
     }
 }

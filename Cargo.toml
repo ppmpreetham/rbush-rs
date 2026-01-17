@@ -1,6 +1,6 @@
 [package]
 name = "rbush-rs"
-version = "0.1.0"
+version = "1.0.1"
 authors = ["Preetham <ppmpreetham1@gmail.com>"]
 description = "High-performance RBush port in WebAssembly"
 repository = "https://github.com/ppmpreetham/rbush-rs"

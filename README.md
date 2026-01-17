@@ -1,46 +1,50 @@
 # rbush-rs
+
 A high-performance(>5x faster), 100% Rust port of [RBush](https://github.com/mourner/rbush) spatial index library, compiled to WebAssembly.
 
 `rbush-rs` is designed to be a near drop-in replacement for `rbush`, offering significant performance improvements for bulk loading and searching massive datasets.
 
 ```diff
-+ Import { RBush } from 'rbush-rs';
-- Import { RBush } from 'rbush';
++ Import RBush from 'rbush-rs';
+- Import RBush from 'rbush';
 ```
 
 ## Benchmark
 
 Tests performed on a dataset of 10,000 rectangles.
 
-| Operation | JS (rbush) | WASM (rbush-rs) | Speedup |
-| --- | --- | --- | --- |
-| **Bulk Load (Hybrid)** | 20.23 ms | **3.60 ms** | **~5.6x Faster** |
-| **Insert (1000 items)** | 36.58 ms | **4.04 ms** | **~9.1x Faster** |
-| **Remove (1000 items)** | 58.03 ms | **7.85 ms** | **~7.4x Faster** |
-| **Search** | 0.042 ms | **0.027 ms** | **~1.6x Faster** |
-| **Collides** | 0.003 ms | 0.003 ms | **1x Faster** |
-| **Clear** | 0.001 ms | 0.001 ms | **1x Faster** |
+| Operation               | JS (rbush) | WASM (rbush-rs) | Speedup          |
+| ----------------------- | ---------- | --------------- | ---------------- |
+| **Bulk Load (Hybrid)**  | 20.23 ms   | **3.60 ms**     | **~5.6x Faster** |
+| **Insert (1000 items)** | 36.58 ms   | **4.04 ms**     | **~9.1x Faster** |
+| **Remove (1000 items)** | 58.03 ms   | **7.85 ms**     | **~7.4x Faster** |
+| **Search**              | 0.042 ms   | **0.027 ms**    | **~1.6x Faster** |
+| **Collides**            | 0.003 ms   | 0.003 ms        | **1x Faster**    |
+| **Clear**               | 0.001 ms   | 0.001 ms        | **1x Faster**    |
 
-*\*Standard load is slower due to the overhead of reading JS objects into WASM. Use Hybrid Load for maximum performance.*
+_\*Standard load is slower due to the overhead of reading JS objects into WASM. Use Hybrid Load for maximum performance._
 
 ## Installation
+
 You can install `rbush-rs` via:
 
 ### npm
+
 ```bash
 npm install rbush-rs
 ```
 
 ### pnpm
+
 ```bash
 pnpm install rbush-rs
 ```
 
 ### yarn
+
 ```bash
 yarn add rbush-rs
 ```
-
 
 ## Usage
 
@@ -49,22 +53,21 @@ yarn add rbush-rs
 Use this mode if you want to switch libraries with minimal code changes. It accepts the same data format as the original `rbush`.
 
 ```javascript
-import { RBush } from 'rbush-rs';
+import { RBush } from "rbush-rs"
 
 // Initialize (max entries per node, default 9)
-const tree = new RBush(9);
+const tree = new RBush(9)
 
 // Load standard data (Array of objects with minX, minY, maxX, maxY)
 const items = [
-    { minX: 10, minY: 10, maxX: 20, maxY: 20, id: 'a' },
-    { minX: 50, minY: 50, maxX: 60, maxY: 60, id: 'b' }
-];
-tree.load(items);
+  { minX: 10, minY: 10, maxX: 20, maxY: 20, id: "a" },
+  { minX: 50, minY: 50, maxX: 60, maxY: 60, id: "b" },
+]
+tree.load(items)
 
 // Search
-const results = tree.search({ minX: 0, minY: 0, maxX: 30, maxY: 30 });
-console.log(results); // [{ minX: 10, ... }]
-
+const results = tree.search({ minX: 0, minY: 0, maxX: 30, maxY: 30 })
+console.log(results) // [{ minX: 10, ... }]
 ```
 
 ### The "Hybrid" Load (Recommended for MAX Speed)
@@ -84,7 +87,7 @@ const flatCoords = new Float64Array(count * 4);
 
 for(let i = 0; i < count; i++) {
     const item = { minX: Math.random() * 100, minY: Math.random() * 100, maxX: ..., maxY: ..., id: i };
-    
+
     // standard items array
     items.push(item);
 
@@ -112,8 +115,8 @@ All operations below work regardless of how you loaded the data (Standard or Hyb
 `rbush-rs` is highly optimized for dynamic updates, performing ~9x faster than JS.
 
 ```javascript
-const item = { minX: 20, minY: 20, maxX: 30, maxY: 30, id: 'c' };
-tree.insert(item);
+const item = { minX: 20, minY: 20, maxX: 30, maxY: 30, id: "c" }
+tree.insert(item)
 ```
 
 #### Removal
@@ -121,7 +124,7 @@ tree.insert(item);
 Removal is ~7x faster than JS. The item object passed must match the one in the tree (by reference equality).
 
 ```javascript
-tree.remove(item);
+tree.remove(item)
 ```
 
 #### Collision Detection
@@ -129,7 +132,7 @@ tree.remove(item);
 Checks if there are any items in the bounding box. Faster than `search` if you don't need the actual items.
 
 ```javascript
-const hasCollision = tree.collides({ minX: 10, minY: 10, maxX: 20, maxY: 20 });
+const hasCollision = tree.collides({ minX: 10, minY: 10, maxX: 20, maxY: 20 })
 // returns true or false
 ```
 
@@ -138,7 +141,7 @@ const hasCollision = tree.collides({ minX: 10, minY: 10, maxX: 20, maxY: 20 });
 Returns all items currently stored in the tree.
 
 ```javascript
-const allItems = tree.all();
+const allItems = tree.all()
 ```
 
 #### Clear Tree
@@ -146,17 +149,17 @@ const allItems = tree.all();
 Removes all items and resets the tree.
 
 ```javascript
-tree.clear();
+tree.clear()
 ```
 
 ## 🔧 API Reference
 
-* **`new RBush(maxEntries?: number)`**: Creates a new tree.
-* **`load(items: array)`**: Bulk loads standard JS objects.
-* **`loadHybrid(coords: Float64Array, items: array)`**: High-performance bulk load.
-* **`insert(item: object)`**: Inserts a single item.
-* **`remove(item: object)`**: Removes a specific item.
-* **`search(bbox: object)`**: Returns an array of items intersecting the bbox.
-* **`collides(bbox: object)`**: Returns `true` if any item intersects the bbox.
-* **`all()`**: Returns all items in the tree.
-* **`clear()`**: Removes all items.
+- **`new RBush(maxEntries?: number)`**: Creates a new tree.
+- **`load(items: array)`**: Bulk loads standard JS objects.
+- **`loadHybrid(coords: Float64Array, items: array)`**: High-performance bulk load.
+- **`insert(item: object)`**: Inserts a single item.
+- **`remove(item: object)`**: Removes a specific item.
+- **`search(bbox: object)`**: Returns an array of items intersecting the bbox.
+- **`collides(bbox: object)`**: Returns `true` if any item intersects the bbox.
+- **`all()`**: Returns all items in the tree.
+- **`clear()`**: Removes all items.

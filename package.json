@@ -1,25 +1,19 @@
 {
   "name": "rbush-rs",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "1.0.5",
+  "description": "High-performance RBush port in WebAssembly (Rust)",
+  "main": "rbush.js",
+  "module": "rbush.js",
+  "type": "module", 
+  "files": [
+    "rbush.js",
+    "pkg/**/*"
+  ],
   "scripts": {
-    "test": "jest"
+    "build": "wasm-pack build --target bundler",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ppmpreetham/rbush-rs.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/ppmpreetham/rbush-rs/issues"
-  },
-  "homepage": "https://github.com/ppmpreetham/rbush-rs#readme",
   "devDependencies": {
-    "jest": "^30.2.0",
-    "rbush": "^3.0.1"
+    "jest": "^30.2.0"
   }
 }
